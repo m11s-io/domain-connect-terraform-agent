@@ -1,0 +1,5 @@
+agent/node_modules/
+agent/dist/
+*.tfplan
+.terraform/
+generated/

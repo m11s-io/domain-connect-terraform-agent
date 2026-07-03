@@ -1,0 +1,20 @@
+{
+  "name": "@m11s-io/domain-connect-terraform-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "generate": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@openai/agents": "0.3.9",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.13",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3"
+  }
+}
