@@ -1,6 +1,7 @@
 import { parseArgs } from "node:util";
 
-import { Agent, MCPServerStdio, run } from "@openai/agents";
+import { Agent, MCPServerStdio, OpenAIProvider, Runner, setTracingDisabled } from "@openai/agents";
+import OpenAI from "openai";
 import { z } from "zod";
 
 import {
@@ -44,6 +45,43 @@ for (const required of ["provider-id", "service-id", "domain", "provider"] as co
 }
 
 const variables = JSON.parse(values.variables ?? "{}") as Record<string, string>;
+
+// Points at any OpenAI-compatible chat completions endpoint (LiteLLM, Ollama,
+// etc). Unset, this falls back to the OpenAI SDK's own defaults. Slower local
+// models can take far longer than the SDK's default 10-minute request
+// timeout per turn, so a custom client raises that; tracing export always
+// targets api.openai.com regardless of baseURL, so it's disabled here too
+// since it's meaningless (and noisy) against a non-OpenAI backend.
+// The `openai` package resolves to slightly different type identities under
+// the "import" vs "require" TS conditions, which trips exactOptionalPropertyTypes
+// even though it's the same class at runtime; re-type through the provider's
+// own expected shape rather than widening to `any`.
+type OpenAIClientOption = NonNullable<
+  NonNullable<ConstructorParameters<typeof OpenAIProvider>[0]>["openAIClient"]
+>;
+
+if (process.env.OPENAI_BASE_URL) {
+  // The per-run `tracingDisabled` RunConfig option only skips *creating*
+  // spans for that run; a global BatchTraceProcessor is still registered at
+  // import time and will keep trying to flush to api.openai.com regardless.
+  // This is the actual switch that stops it from firing at all.
+  setTracingDisabled(true);
+}
+
+const runner = new Runner({
+  modelProvider: process.env.OPENAI_BASE_URL
+    ? new OpenAIProvider({
+        openAIClient: new OpenAI({
+          apiKey: process.env.OPENAI_API_KEY ?? "unused",
+          baseURL: process.env.OPENAI_BASE_URL,
+          timeout: 30 * 60 * 1000,
+          maxRetries: 0,
+        }) as unknown as OpenAIClientOption,
+        useResponses: false,
+      })
+    : new OpenAIProvider(),
+});
+
 const terraformMcp = new MCPServerStdio({
   name: "terraform-registry",
   command: process.env.TERRAFORM_MCP_BINARY ?? "terraform-mcp-server",
@@ -96,7 +134,7 @@ provider attribute or silently omit a template record.
 async function main(): Promise<void> {
   await terraformMcp.connect();
   try {
-    const result = await run(
+    const result = await runner.run(
       agent,
       JSON.stringify({
         providerId: values["provider-id"],

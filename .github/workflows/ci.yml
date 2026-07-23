@@ -22,5 +22,7 @@ jobs:
         working-directory: agent
       - run: npm run check
         working-directory: agent
+      - run: npm test
+        working-directory: agent
       - run: npm run build
         working-directory: agent
