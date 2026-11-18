@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   maintenance:
-    uses: m11s-io/.github/.github/workflows/maintenance.yml@main
+    uses: m11s-io/.github/.github/workflows/maintenance.yml@fd30388e2c4782d08d8a92ae8e48884cf1a280d8 # main
     with:
       host-ref: main
       live: ${{ github.event_name != 'workflow_dispatch' || !inputs.dry-run }}
